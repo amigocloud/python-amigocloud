@@ -18,6 +18,7 @@ setup(
     author='Julio M Alegria',
     author_email='julio@amigocloud.com',
     url='https://github.com/amigocloud/python-amigocloud',
+    download_url = 'https://github.com/amigocloud/python-amigocloud/tarball/1.0',
     install_requires=requires,
     license='MIT'
 )
