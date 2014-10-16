@@ -1,0 +1,3 @@
+recursive-include amigocloud *
+include *.rst
+include *.txt
