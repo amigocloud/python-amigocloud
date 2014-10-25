@@ -5,7 +5,6 @@ import requests
 from socketIO_client import SocketIO, BaseNamespace
 
 BASE_URL = 'https://www.amigocloud.com'
-WEBSOCKET_PORT = 5005
 
 CLIENT_ID = '82e597d526db4fd027a7'
 CLIENT_SECRET = '07b03a991c84901ac7341ff967563f1c2e4d6cd3'
@@ -28,7 +27,7 @@ class AmigoCloud(object):
 
     def __init__(self, email=None, password=None, client_id=CLIENT_ID,
                  client_secret=CLIENT_SECRET, base_url=BASE_URL,
-                 websocket_port=WEBSOCKET_PORT):
+                 use_websockets=True, websocket_port=None):
 
         # Urls
         if base_url.endswith('/'):
@@ -44,9 +43,13 @@ class AmigoCloud(object):
         self._expires_on = None
 
         # Websockets
-        self.socketio = SocketIO(self.base_url.replace('https:', 'http:'),
-                                 websocket_port)
-        self.amigosocket = self.socketio.define(BaseNamespace, '/amigosocket')
+        if use_websockets:
+            self.socketio = SocketIO(self.base_url, websocket_port)
+            self.amigosocket = self.socketio.define(BaseNamespace,
+                                                    '/amigosocket')
+        else:
+            self.socketio = None
+            self.amigosocket = None
 
         # Login
         if email and password:
