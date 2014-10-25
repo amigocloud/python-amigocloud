@@ -88,8 +88,13 @@ class AmigoCloud(object):
         delta = timedelta(seconds=response['expires_in'])
         self._expires_on = datetime.now() + delta
 
+        # Get user id
+        response = self.get('/me')
+        self._logged_user_id = response['id']
+
     def logout(self):
         self._access_token = None
+        self._logged_user_id = None
 
     def _authorization_header(self):
         if not self._access_token:
@@ -176,14 +181,13 @@ class AmigoCloud(object):
             msg = 'You must be logged in to start receiving websocket events.'
             raise AmigoCloudError(msg)
 
-        response = self.get('/me')
-        user_id = response['id']
-        response = self.get(response['start_websocket_session'])
+        response = self.get('/me/start_websocket_session')
         websocket_session = response['websocket_session']
-        auth_data = {'userid': user_id, 'websocket_session': websocket_session}
+        auth_data = {'userid': self._logged_user_id,
+                     'websocket_session': websocket_session}
         self.amigosocket.emit('authenticate', auth_data)
 
-    def listen_dataset_events(self, user_id, project_id, dataset_id):
+    def listen_dataset_events(self, owner_id, project_id, dataset_id):
         """
         Authenticate to start using dataset events.
         """
@@ -193,9 +197,10 @@ class AmigoCloud(object):
             raise AmigoCloudError(msg)
 
         url = '/users/%s/projects/%s/datasets/%s/start_websocket_session'
-        response = self.get(url % (user_id, project_id, dataset_id))
+        response = self.get(url % (owner_id, project_id, dataset_id))
         websocket_session = response['websocket_session']
-        auth_data = {'userid': user_id, 'datasetid': dataset_id,
+        auth_data = {'userid': self._logged_user_id,
+                     'datasetid': dataset_id,
                      'websocket_session': websocket_session}
         self.amigosocket.emit('authenticate', auth_data)
 
