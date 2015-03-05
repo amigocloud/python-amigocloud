@@ -27,13 +27,15 @@ Usage
 Authentication
 ~~~~~~~~~~~~~~
 
-To start using this library, first login with your AmigoCloud
-credentials:
+This library uses API token to authenticate you. To generate or access your API tokens, go to `API tokens <https://www.amigocloud.com/accounts/tokens>`__.
 
 .. code:: python
 
     from amigocloud import AmigoCloud
-    amigocloud = AmigoCloud(email='user@example.com', password='********')
+    amigocloud = AmigoCloud(token='R:dlNDEiOWciP3y26kG2cHklYpr2HIPK40HD32r1')
+
+
+You can use a READ token if you only want to do requests that won't alter data. Otherwise, you'll need to use more permissive tokens.
 
 Requests
 ~~~~~~~~

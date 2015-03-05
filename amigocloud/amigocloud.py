@@ -1,13 +1,10 @@
-from datetime import datetime, timedelta
 import json
+import urlparse
 
 import requests
 from socketIO_client import SocketIO, BaseNamespace
 
 BASE_URL = 'https://www.amigocloud.com'
-
-CLIENT_ID = '82e597d526db4fd027a7'
-CLIENT_SECRET = '07b03a991c84901ac7341ff967563f1c2e4d6cd3'
 
 
 class AmigoCloudError(Exception):
@@ -24,10 +21,14 @@ class AmigoCloudError(Exception):
 
 
 class AmigoCloud(object):
+    """
+    Client for the AmigoCloud REST API.
+    Uses API tokens for authentication. To generate yours, go to:
+        https://www.amigocloud.com/accounts/tokens
+    """
 
-    def __init__(self, email=None, password=None, client_id=CLIENT_ID,
-                 client_secret=CLIENT_SECRET, base_url=BASE_URL,
-                 use_websockets=True, websocket_port=None):
+    def __init__(self, token=None, base_url=BASE_URL, use_websockets=True,
+                 websocket_port=None):
 
         # Urls
         if base_url.endswith('/'):
@@ -36,11 +37,10 @@ class AmigoCloud(object):
             self.base_url = base_url
         self.api_url = self.base_url + '/api/v1'
 
-        # OAuth2
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._access_token = None
-        self._expires_on = None
+        # Auth
+        self.logout()
+        if token:
+            self.authenticate(token)
 
         # Websockets
         if use_websockets:
@@ -51,10 +51,6 @@ class AmigoCloud(object):
             self.socketio = None
             self.amigosocket = None
 
-        # Login
-        if email and password:
-            self.login(email, password)
-
     def build_url(self, url):
 
         if url.startswith('http'):
@@ -63,7 +59,7 @@ class AmigoCloud(object):
         # User wants to use the api_url
         if url.startswith('/'):
             return self.api_url + url
-        return self.api_url + '/' + url
+        return '%s/%s' % (self.api_url, url)
 
     def check_for_errors(self, response):
         try:
@@ -71,38 +67,14 @@ class AmigoCloud(object):
         except requests.exceptions.HTTPError as exc:
             raise AmigoCloudError(exc.message, exc.response)
 
-    def login(self, email, password):
-        """
-        Logs in the user and keeps the session ID.
-        """
-
-        post_data = {'client_id': self._client_id,
-                     'client_secret': self._client_secret,
-                     'grant_type': 'password',
-                     'username': email,
-                     'password': password}
-        response = self.post('/oauth2/access_token', send_as_json=False,
-                             data=post_data)
-
-        self._access_token = response['access_token']
-        delta = timedelta(seconds=response['expires_in'])
-        self._expires_on = datetime.now() + delta
-
-        # Get user id
+    def authenticate(self, token):
+        self._token = token
         response = self.get('/me')
-        self._logged_user_id = response['id']
+        self._user_id = response['id']
 
     def logout(self):
-        self._access_token = None
-        self._logged_user_id = None
-
-    def _authorization_header(self):
-        if not self._access_token:
-            return {}
-        if datetime.now() < self._expires_on:
-            return {'Authorization': 'Bearer %s' % self._access_token}
-        msg = 'Your access_token has expired. Please login again.'
-        raise AmigoCloudError(msg)
+        self._token = None
+        self._user_id = None
 
     def get(self, url, params=None, raw=False):
         """
@@ -112,6 +84,10 @@ class AmigoCloud(object):
         full_url = self.build_url(url)
         params = params or {}
 
+        # Add token (if it's not already there)
+        if self._token:
+            params.setdefault('token', self._token)
+
         response = requests.get(full_url, params=params,
                                 headers=self._authorization_header())
         self.check_for_errors(response)  # Raise exception if something failed
@@ -120,16 +96,28 @@ class AmigoCloud(object):
             return response.content
         return json.loads(response.text)
 
-    def _secure_request(self, url, method, data=None, raw=False,
-                        send_as_json=True):
+    def _secure_request(self, url, method, data=None, headers=None, raw=False,
+                        send_as_json=True, content_type=None):
 
         full_url = self.build_url(url)
-        headers = self._authorization_header()
+
+        # Add token (if it's not already there)
+        if self._token:
+            parsed = list(urlparse.urlparse(url))
+            if not parsed[4]:  # query
+                parsed[4] = 'token=%s' % self._token
+                full_url = urlparse.urlunparse(parsed)
+            elif 'token' not in urlparse.parse_qs(parsed[4]):
+                parsed[4] += '&token=%s' % self._token
+                full_url = urlparse.urlunparse(parsed)
+        headers = headers or {}
 
         if send_as_json:
-            headers.update({'content-type': 'application/json'})
+            headers['content-type'] = 'application/json'
             data = json.dumps(data or {})
         else:
+            if content_type:
+                headers['content-type'] = content_type
             data = data or ''
 
         method = getattr(requests, method, None)
@@ -140,50 +128,58 @@ class AmigoCloud(object):
             return response.content
         return json.loads(response.text)
 
-    def post(self, url, data=None, raw=False, send_as_json=True):
+    def post(self, url, data=None, headers=None, raw=False, send_as_json=True,
+             content_type=None):
         """
         POST request to AmigoCloud endpoint.
         """
 
         return self._secure_request(url, 'post', data=data, raw=raw,
-                                    send_as_json=send_as_json)
+                                    send_as_json=send_as_json,
+                                    content_type=content_type)
 
-    def put(self, url, data=None, raw=False, send_as_json=True):
+    def put(self, url, data=None, raw=False, send_as_json=True,
+            content_type=None):
         """
         PUT request to AmigoCloud endpoint.
         """
 
         return self._secure_request(url, 'put', data=data, raw=raw,
-                                    send_as_json=send_as_json)
+                                    send_as_json=send_as_json,
+                                    content_type=content_type)
 
-    def patch(self, url, data=None, raw=False, send_as_json=True):
+    def patch(self, url, data=None, raw=False, send_as_json=True,
+              content_type=None):
         """
         PATCH request to AmigoCloud endpoint.
         """
 
         return self._secure_request(url, 'patch', data=data, raw=raw,
-                                    send_as_json=send_as_json)
+                                    send_as_json=send_as_json,
+                                    content_type=content_type)
 
-    def delete(self, url, data=None, raw=False, send_as_json=True):
+    def delete(self, url, data=None, raw=False, send_as_json=True,
+               content_type=None):
         """
         DELETE request to AmigoCloud endpoint.
         """
 
         return self._secure_request(url, 'delete', data=data, raw=raw,
-                                    send_as_json=send_as_json)
+                                    send_as_json=send_as_json,
+                                    content_type=content_type)
 
     def listen_user_events(self):
         """
         Authenticate to start listening to user events.
         """
 
-        if not self._access_token:
+        if not self._user_id:
             msg = 'You must be logged in to start receiving websocket events.'
             raise AmigoCloudError(msg)
 
         response = self.get('/me/start_websocket_session')
         websocket_session = response['websocket_session']
-        auth_data = {'userid': self._logged_user_id,
+        auth_data = {'userid': self._user_id,
                      'websocket_session': websocket_session}
         self.amigosocket.emit('authenticate', auth_data)
 
@@ -192,14 +188,14 @@ class AmigoCloud(object):
         Authenticate to start using dataset events.
         """
 
-        if not self._access_token:
+        if not self._user_id:
             msg = 'You must be logged in to start receiving websocket events.'
             raise AmigoCloudError(msg)
 
         url = '/users/%s/projects/%s/datasets/%s/start_websocket_session'
         response = self.get(url % (owner_id, project_id, dataset_id))
         websocket_session = response['websocket_session']
-        auth_data = {'userid': self._logged_user_id,
+        auth_data = {'userid': self._user_id,
                      'datasetid': dataset_id,
                      'websocket_session': websocket_session}
         self.amigosocket.emit('authenticate', auth_data)
