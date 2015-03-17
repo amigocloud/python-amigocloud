@@ -86,8 +86,10 @@ Websocket connection
 The websocket connection is started when the AmigoCloud object is
 instantiated, and it is closed when the object is destroyed.
 
-To start listening to websocket events related to your user do (you must
-be logged in to start listening to your events):
+Make sure to read `our help page about our websocket events <http://help.amigocloud.com/hc/en-us/articles/204246154>`__ before continue reading.
+
+To start listening to websocket events related to your user (multicast
+events), do (you must be logged in to start listening to your events):
 
 .. code:: python
 
@@ -95,13 +97,29 @@ be logged in to start listening to your events):
 
 Once you're listening to your events, you can start adding callbacks to
 them. A callback is a function that will be called everytime the event
-is received.
+is received. These functions should have only one parameter, that would be a python dict.
 
 .. code:: python
 
     def project_created(data):
-        print 'Data received:', data
+        print 'User id=%(user_id)s created project id=%(project_id)s' % data
     amigocloud.add_callback('project:creation_succeeded', project_created)
+
+Realtime events are broadcast events related to realtime dataset. To start listening to them, do:
+
+.. code:: python
+
+    amigocloud.listen_dataset_events(owner_id, project_id, dataset_id)
+
+Then add a callback for them:
+
+.. code:: python
+
+    def realtime(data):
+        print 'Realtime dataset id=%(dataset_id)s' % data
+        for obj in data['data']:
+            print "Object '%(object_id)s' is now at (%(latitude)s, %(longitude)s)" % obj
+    amigocloud.add_callback('realtime', realtime)
 
 Finally, start running the websocket client:
 

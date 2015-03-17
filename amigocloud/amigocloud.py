@@ -88,8 +88,7 @@ class AmigoCloud(object):
         if self._token:
             params.setdefault('token', self._token)
 
-        response = requests.get(full_url, params=params,
-                                headers=self._authorization_header())
+        response = requests.get(full_url, params=params)
         self.check_for_errors(response)  # Raise exception if something failed
 
         if raw or not response.content:
@@ -103,7 +102,7 @@ class AmigoCloud(object):
 
         # Add token (if it's not already there)
         if self._token:
-            parsed = list(urlparse.urlparse(url))
+            parsed = list(urlparse.urlparse(full_url))
             if not parsed[4]:  # query
                 parsed[4] = 'token=%s' % self._token
                 full_url = urlparse.urlunparse(parsed)
