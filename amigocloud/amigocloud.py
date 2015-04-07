@@ -2,6 +2,7 @@ import json
 import urlparse
 
 import requests
+requests.packages.urllib3.disable_warnings()
 from socketIO_client import SocketIO, BaseNamespace
 
 BASE_URL = 'https://www.amigocloud.com'
