@@ -1,4 +1,6 @@
+import hashlib
 import json
+import os
 import urlparse
 
 import requests
@@ -6,6 +8,8 @@ requests.packages.urllib3.disable_warnings()
 from socketIO_client import SocketIO, BaseNamespace
 
 BASE_URL = 'https://www.amigocloud.com'
+CHUNK_SIZE = 100000  # 100kB
+MAX_SIZE_SIMPLE_UPLOAD = 8000000  # 8MB
 
 
 class AmigoCloudError(Exception):
@@ -77,7 +81,7 @@ class AmigoCloud(object):
         self._token = None
         self._user_id = None
 
-    def get(self, url, params=None, raw=False):
+    def get(self, url, params=None, raw=False, stream=False, **request_kwargs):
         """
         GET request to AmigoCloud endpoint.
         """
@@ -89,15 +93,19 @@ class AmigoCloud(object):
         if self._token:
             params.setdefault('token', self._token)
 
-        response = requests.get(full_url, params=params)
+        response = requests.get(full_url, params=params, stream=stream,
+                                **request_kwargs)
         self.check_for_errors(response)  # Raise exception if something failed
 
+        if stream:
+            return response
         if raw or not response.content:
             return response.content
         return json.loads(response.text)
 
-    def _secure_request(self, url, method, data=None, headers=None, raw=False,
-                        send_as_json=True, content_type=None):
+    def _secure_request(self, url, method, data=None, files=None, headers=None,
+                        raw=False, send_as_json=True, content_type=None,
+                        **request_kwargs):
 
         full_url = self.build_url(url)
 
@@ -112,7 +120,8 @@ class AmigoCloud(object):
                 full_url = urlparse.urlunparse(parsed)
         headers = headers or {}
 
-        if send_as_json:
+        # If files are being sent, we cannot encode data as JSON
+        if send_as_json and not files:
             headers['content-type'] = 'application/json'
             data = json.dumps(data or {})
         else:
@@ -121,52 +130,101 @@ class AmigoCloud(object):
             data = data or ''
 
         method = getattr(requests, method, None)
-        response = method(full_url, data=data, headers=headers)
+        response = method(full_url, data=data, files=files, headers=headers,
+                          **request_kwargs)
         self.check_for_errors(response)  # Raise exception if something failed
 
         if raw or not response.content:
             return response.content
         return json.loads(response.text)
 
-    def post(self, url, data=None, headers=None, raw=False, send_as_json=True,
-             content_type=None):
+    def post(self, url, data=None, files=None, headers=None, raw=False,
+             send_as_json=True, content_type=None, **request_kwargs):
         """
         POST request to AmigoCloud endpoint.
         """
 
-        return self._secure_request(url, 'post', data=data, raw=raw,
-                                    send_as_json=send_as_json,
-                                    content_type=content_type)
+        return self._secure_request(
+            url, 'post', data=data, files=files, headers=headers, raw=raw,
+            send_as_json=send_as_json, content_type=content_type,
+            **request_kwargs
+        )
 
-    def put(self, url, data=None, raw=False, send_as_json=True,
-            content_type=None):
+    def put(self, url, data=None, files=None, headers=None, raw=False,
+            send_as_json=True, content_type=None, **request_kwargs):
         """
         PUT request to AmigoCloud endpoint.
         """
 
-        return self._secure_request(url, 'put', data=data, raw=raw,
-                                    send_as_json=send_as_json,
-                                    content_type=content_type)
+        return self._secure_request(
+            url, 'put', data=data, files=files, headers=headers, raw=raw,
+            send_as_json=send_as_json, content_type=content_type,
+            **request_kwargs
+        )
 
-    def patch(self, url, data=None, raw=False, send_as_json=True,
-              content_type=None):
+    def patch(self, url, data=None, files=None, headers=None, raw=False,
+              send_as_json=True, content_type=None, **request_kwargs):
         """
         PATCH request to AmigoCloud endpoint.
         """
 
-        return self._secure_request(url, 'patch', data=data, raw=raw,
-                                    send_as_json=send_as_json,
-                                    content_type=content_type)
+        return self._secure_request(
+            url, 'patch', data=data, files=files, headers=headers, raw=raw,
+            send_as_json=send_as_json, content_type=content_type,
+            **request_kwargs
+        )
 
-    def delete(self, url, data=None, raw=False, send_as_json=True,
-               content_type=None):
+    def delete(self, url, data=None, files=None, headers=None, raw=False,
+               send_as_json=True, content_type=None, **request_kwargs):
         """
         DELETE request to AmigoCloud endpoint.
         """
 
-        return self._secure_request(url, 'delete', data=data, raw=raw,
-                                    send_as_json=send_as_json,
-                                    content_type=content_type)
+        return self._secure_request(
+            url, 'delete', data=data, files=files, headers=headers, raw=raw,
+            send_as_json=send_as_json, content_type=content_type,
+            **request_kwargs
+        )
+
+    def upload_datafile(self, project_owner, project_id, filepath,
+                        chunk_size=CHUNK_SIZE, force_chunked=False):
+        """
+        Upload datafile to a project.
+        """
+
+        simple_upload_url = 'users/%s/projects/%s/datasets/upload'
+        chunked_upload_url = 'users/%s/projects/%s/datasets/chunked_upload'
+
+        filename = os.path.basename(filepath)
+
+        with open(filepath, 'rb') as datafile:
+            datafile_size = os.path.getsize(filepath)
+            if not force_chunked and datafile_size < MAX_SIZE_SIMPLE_UPLOAD:
+                # Simple upload
+                url = simple_upload_url % (project_owner, project_id)
+                return self.post(url, files={'datafile': (filename, datafile)})
+            url = chunked_upload_url % (project_owner, project_id)
+            data = {}
+            md5_hash = hashlib.md5()
+            start_byte = 0
+            # Chunked upload
+            while True:
+                chunk = datafile.read(chunk_size)
+                md5_hash.update(chunk)
+                end_byte = start_byte + len(chunk) - 1
+                content_range = 'bytes %d-%d/%d' % (start_byte, end_byte,
+                                                    datafile_size)
+                ret = self.post(url, data=data,
+                                files={'datafile': (filename, chunk)},
+                                headers={'Content-Range': content_range})
+                data['upload_id'] = ret['upload_id']
+                start_byte = end_byte + 1
+                if start_byte == datafile_size:
+                    break
+            # Complete request
+            url_complete = url + '/complete'
+            return self.post(url_complete, {'upload_id': data['upload_id'],
+                                            'md5': md5_hash.hexdigest()})
 
     def listen_user_events(self):
         """
