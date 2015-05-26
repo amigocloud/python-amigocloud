@@ -186,45 +186,92 @@ class AmigoCloud(object):
             **request_kwargs
         )
 
-    def upload_datafile(self, project_owner, project_id, filepath,
-                        chunk_size=CHUNK_SIZE, force_chunked=False):
+    def upload_file(self, simple_upload_url, chunked_upload_url, filepath,
+                    chunk_size=CHUNK_SIZE, force_chunked=False,
+                    extra_data=None):
         """
-        Upload datafile to a project.
+        Generic method to upload files to AmigoCloud. Can be used for different
+        API endpoints.
+        If the size of the file is greater than MAX_SIZE_SIMPLE_UPLOAD (8MB)
+        `chunked_upload_url` will be used, otherwise `simple_upload_url` will
+        be.
+        If `simple_upload_url` evaluates to False, or `force_chunked` is True,
+        the `chunked_upload_url` will always be used.
         """
-
-        simple_upload_url = 'users/%s/projects/%s/datasets/upload'
-        chunked_upload_url = 'users/%s/projects/%s/datasets/chunked_upload'
 
         filename = os.path.basename(filepath)
 
-        with open(filepath, 'rb') as datafile:
-            datafile_size = os.path.getsize(filepath)
-            if not force_chunked and datafile_size < MAX_SIZE_SIMPLE_UPLOAD:
-                # Simple upload
-                url = simple_upload_url % (project_owner, project_id)
-                return self.post(url, files={'datafile': (filename, datafile)})
-            url = chunked_upload_url % (project_owner, project_id)
+        with open(filepath, 'rb') as the_file:
+            file_size = os.path.getsize(filepath)
+            # Simple upload?
+            if (simple_upload_url and not force_chunked
+                    and file_size < MAX_SIZE_SIMPLE_UPLOAD):
+                return self.post(simple_upload_url, data=extra_data,
+                                 files={'datafile': (filename, the_file)})
+            # Chunked upload
             data = {}
             md5_hash = hashlib.md5()
             start_byte = 0
-            # Chunked upload
             while True:
-                chunk = datafile.read(chunk_size)
+                chunk = the_file.read(chunk_size)
                 md5_hash.update(chunk)
                 end_byte = start_byte + len(chunk) - 1
                 content_range = 'bytes %d-%d/%d' % (start_byte, end_byte,
-                                                    datafile_size)
-                ret = self.post(url, data=data,
+                                                    file_size)
+                ret = self.post(chunked_upload_url, data=data,
                                 files={'datafile': (filename, chunk)},
                                 headers={'Content-Range': content_range})
-                data['upload_id'] = ret['upload_id']
+                data.setdefault('upload_id', ret['upload_id'])
                 start_byte = end_byte + 1
-                if start_byte == datafile_size:
+                if start_byte == file_size:
                     break
             # Complete request
-            url_complete = url + '/complete'
-            return self.post(url_complete, {'upload_id': data['upload_id'],
-                                            'md5': md5_hash.hexdigest()})
+            if chunked_upload_url.endswith('/'):
+                chunked_upload_complete_url = chunked_upload_url + 'complete'
+            else:
+                chunked_upload_complete_url = chunked_upload_url + '/complete'
+            data['md5'] = md5_hash.hexdigest()
+            if extra_data:
+                data.update(extra_data)
+            return self.post(chunked_upload_complete_url, data=data)
+
+    def upload_datafile(self, project_owner, project_id, filepath,
+                        chunk_size=CHUNK_SIZE, force_chunked=False):
+        """
+        Upload datafile to a project. The file must be a supported format or a
+        zip file containing supported formats.
+        To see the formats we support, go to this URL:
+        http://help.amigocloud.com/hc/en-us/articles/202413410-Supported-Format
+        """
+
+        simple_upload_url = 'users/%s/projects/%s/datasets/upload' % (
+            project_owner, project_id
+        )
+        chunked_upload_url = 'users/%s/projects/%s/datasets/chunked_upload' % (
+            project_owner, project_id
+        )
+
+        self.upload_file(simple_upload_url, chunked_upload_url, filepath,
+                         chunk_size=chunk_size, force_chunked=force_chunked)
+
+    def upload_gallery_photo(self, gallery_id, source_amigo_id, filepath,
+                             chunk_size=CHUNK_SIZE, force_chunked=False,
+                             metadata=None):
+        """
+        Upload a photo to a dataset's gallery.
+        """
+
+        simple_upload_url = 'related_tables/%s/upload' % gallery_id
+        chunked_upload_url = 'related_tables/%s/chunked_upload' % gallery_id
+
+        data = {'source_amigo_id': source_amigo_id,
+                'filename': os.path.basename(filepath)}
+        if metadata:
+            data.update(metadata)
+
+        self.upload_file(simple_upload_url, chunked_upload_url, filepath,
+                         chunk_size=chunk_size, force_chunked=force_chunked,
+                         extra_data=data)
 
     def listen_user_events(self):
         """
