@@ -4,8 +4,14 @@ import os
 import urlparse
 
 import requests
-requests.packages.urllib3.disable_warnings()
 from socketIO_client import SocketIO, BaseNamespace
+
+# Disable useless warnings
+# Works with requests==2.6.0, fails with some other versions
+try:
+    requests.packages.urllib3.disable_warnings()
+except AttributeError:
+    pass
 
 BASE_URL = 'https://www.amigocloud.com'
 CHUNK_SIZE = 100000  # 100kB
@@ -186,12 +192,13 @@ class AmigoCloud(object):
             **request_kwargs
         )
 
-    def upload_file(self, simple_upload_url, chunked_upload_url, filepath,
+    def upload_file(self, simple_upload_url, chunked_upload_url, file_obj,
                     chunk_size=CHUNK_SIZE, force_chunked=False,
                     extra_data=None):
         """
         Generic method to upload files to AmigoCloud. Can be used for different
         API endpoints.
+        `file_obj` could be a file-like object or a filepath.
         If the size of the file is greater than MAX_SIZE_SIMPLE_UPLOAD (8MB)
         `chunked_upload_url` will be used, otherwise `simple_upload_url` will
         be.
@@ -199,21 +206,33 @@ class AmigoCloud(object):
         the `chunked_upload_url` will always be used.
         """
 
-        filename = os.path.basename(filepath)
+        if isinstance(file_obj, basestring):
+            # file_obj is a filepath: open file and close it at the end
+            file_obj = open(file_obj, 'rb')
+            close_file = True
+        else:
+            # assume file_obj is a file-like object
+            close_file = False
 
-        with open(filepath, 'rb') as the_file:
-            file_size = os.path.getsize(filepath)
+        # Get file size
+        file_obj.seek(0, os.SEEK_END)
+        file_size = file_obj.tell()
+        file_obj.seek(0)
+        # Get filename
+        filename = os.path.basename(file_obj.name)
+
+        try:
             # Simple upload?
             if (simple_upload_url and not force_chunked
                     and file_size < MAX_SIZE_SIMPLE_UPLOAD):
                 return self.post(simple_upload_url, data=extra_data,
-                                 files={'datafile': (filename, the_file)})
+                                 files={'datafile': (filename, file_obj)})
             # Chunked upload
             data = {}
             md5_hash = hashlib.md5()
             start_byte = 0
             while True:
-                chunk = the_file.read(chunk_size)
+                chunk = file_obj.read(chunk_size)
                 md5_hash.update(chunk)
                 end_byte = start_byte + len(chunk) - 1
                 content_range = 'bytes %d-%d/%d' % (start_byte, end_byte,
@@ -234,8 +253,11 @@ class AmigoCloud(object):
             if extra_data:
                 data.update(extra_data)
             return self.post(chunked_upload_complete_url, data=data)
+        finally:
+            if close_file:
+                file_obj.close()
 
-    def upload_datafile(self, project_owner, project_id, filepath,
+    def upload_datafile(self, project_owner, project_id, file_obj,
                         chunk_size=CHUNK_SIZE, force_chunked=False):
         """
         Upload datafile to a project. The file must be a supported format or a
@@ -252,10 +274,10 @@ class AmigoCloud(object):
         )
 
         return self.upload_file(simple_upload_url, chunked_upload_url,
-                                filepath, chunk_size=chunk_size,
+                                file_obj, chunk_size=chunk_size,
                                 force_chunked=force_chunked)
 
-    def upload_gallery_photo(self, gallery_id, source_amigo_id, filepath,
+    def upload_gallery_photo(self, gallery_id, source_amigo_id, file_obj,
                              chunk_size=CHUNK_SIZE, force_chunked=False,
                              metadata=None):
         """
@@ -265,13 +287,16 @@ class AmigoCloud(object):
         simple_upload_url = 'related_tables/%s/upload' % gallery_id
         chunked_upload_url = 'related_tables/%s/chunked_upload' % gallery_id
 
-        data = {'source_amigo_id': source_amigo_id,
-                'filename': os.path.basename(filepath)}
+        data = {'source_amigo_id': source_amigo_id}
+        if isinstance(file_obj, basestring):
+            data['filename'] = os.path.basename(file_obj)
+        else:
+            data['filename'] = os.path.basename(file_obj.name)
         if metadata:
             data.update(metadata)
 
         return self.upload_file(simple_upload_url, chunked_upload_url,
-                                filepath, chunk_size=chunk_size,
+                                file_obj, chunk_size=chunk_size,
                                 force_chunked=force_chunked, extra_data=data)
 
     def listen_user_events(self):
