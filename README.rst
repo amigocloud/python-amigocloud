@@ -34,6 +34,13 @@ This library uses API token to authenticate you. To generate or access your API 
     from amigocloud import AmigoCloud
     amigocloud = AmigoCloud(token='R:dlNDEiOWciP3y26kG2cHklYpr2HIPK40HD32r1')
 
+You could also use a project token.
+
+.. code:: python
+    from amigocloud import AmigoCloud
+    amigocloud = AmigoCloud(token='C:Ndl3xGWeasYt9rqyuVsByf5HPMAGyte10y1Mub',
+                            project_url='users/123/projects/1234')
+
 
 You can use a READ token if you only want to do requests that won't alter data. Otherwise, you'll need to use more permissive tokens.
 
@@ -49,6 +56,15 @@ can use full urls or relative API urls:
     amigocloud.get('me')
     amigocloud.get('/me')
     amigocloud.get('https://www.amigocloud.com/api/v1/me')
+
+For convenience, when using project tokens, urls are relative to the project's url:
+
+.. code:: python
+
+    # All three will do the same request:
+    amigocloud.get('datasets')
+    amigocloud.get('/datasets')
+    amigocloud.get('https://www.amigocloud.com/api/v1/users/123/projects/1234/datasets')
 
 Creating a new AmigoCloud project from Python is as simple as:
 
