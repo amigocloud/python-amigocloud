@@ -37,6 +37,7 @@ This library uses API token to authenticate you. To generate or access your API 
 You could also use a project token.
 
 .. code:: python
+
     from amigocloud import AmigoCloud
     amigocloud = AmigoCloud(token='C:Ndl3xGWeasYt9rqyuVsByf5HPMAGyte10y1Mub',
                             project_url='users/123/projects/1234')
@@ -100,7 +101,8 @@ Websocket connection
 ~~~~~~~~~~~~~~~~~~~~
 
 The websocket connection is started when the AmigoCloud object is
-instantiated, and it is closed when the object is destroyed.
+instantiated, and it is closed when the object is destroyed. You always
+need to use a user token for websockets.
 
 Make sure to read `our help page about our websocket events <http://help.amigocloud.com/hc/en-us/articles/204246154>`__ before continue reading.
 
