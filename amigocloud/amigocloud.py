@@ -41,9 +41,20 @@ class AmigoCloud(object):
         https://www.amigocloud.com/accounts/tokens
     """
 
-    def __init__(self, token=None, base_url=BASE_URL, use_websockets=True,
-                 websocket_port=None):
+    error_msg = {
+        'logged_in_websockets': ('You must be logged in with a user token '
+                                 'to start receiving websocket events.')
+    }
 
+    def __init__(self, token=None, project_url=None, base_url=BASE_URL,
+                 use_websockets=True, websocket_port=None):
+        """
+        :param str token: AmigoCloud API Token
+        :param str project_url: Specify it if you are using a project token
+        :param str base_url: points to https://www.amigocloud.com by default
+        :param bool use_websockets: True by default
+        :param int websocket_port: Standard websocket port by default
+        """
         # Urls
         if base_url.endswith('/'):
             self.base_url = base_url[:-1]
@@ -51,13 +62,17 @@ class AmigoCloud(object):
             self.base_url = base_url
         self.api_url = self.base_url + '/api/v1'
 
+        self._token = None
+        self._user_id = None
+        self._project_id = None
+        self._project_url = None
+
         # Auth
-        self.logout()
         if token:
-            self.authenticate(token)
+            self.authenticate(token, project_url)
 
         # Websockets
-        if use_websockets:
+        if use_websockets and not project_url:
             self.socketio = SocketIO(self.base_url, websocket_port)
             self.amigosocket = self.socketio.define(BaseNamespace,
                                                     '/amigosocket')
@@ -72,23 +87,31 @@ class AmigoCloud(object):
             return url
         # User wants to use the api_url
         if url.startswith('/'):
-            return self.api_url + url
-        return '%s/%s' % (self.api_url, url)
+            return (self._project_url or self.api_url) + url
+        return '%s/%s' % (self._project_url or self.api_url, url)
 
     def check_for_errors(self, response):
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as exc:
-            raise AmigoCloudError(exc.message, exc.response)
+            raise AmigoCloudError(str(exc), exc.response)
 
-    def authenticate(self, token):
+    def authenticate(self, token, project_url=None):
         self._token = token
-        response = self.get('/me')
-        self._user_id = response['id']
+        self._project_url = (self.build_url(project_url) if project_url
+                             else None)
+        if not self._project_url:
+            response = self.get('/me')
+            self._user_id = response['id']
+        else:
+            response = self.get('')
+            self._project_id = response['id']
 
     def logout(self):
         self._token = None
         self._user_id = None
+        self._project_id = None
+        self._project_url = None
 
     def get(self, url, params=None, raw=False, stream=False, **request_kwargs):
         """
@@ -308,8 +331,7 @@ class AmigoCloud(object):
         """
 
         if not self._user_id:
-            msg = 'You must be logged in to start receiving websocket events.'
-            raise AmigoCloudError(msg)
+            raise AmigoCloudError(self.error_msg['logged_in_websockets'])
 
         response = self.get('/me/start_websocket_session')
         websocket_session = response['websocket_session']
@@ -323,8 +345,7 @@ class AmigoCloud(object):
         """
 
         if not self._user_id:
-            msg = 'You must be logged in to start receiving websocket events.'
-            raise AmigoCloudError(msg)
+            raise AmigoCloudError(self.error_msg['logged_in_websockets'])
 
         url = '/users/%s/projects/%s/datasets/%s/start_websocket_session'
         response = self.get(url % (owner_id, project_id, dataset_id))

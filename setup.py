@@ -8,7 +8,7 @@ except ImportError:
 with open('VERSION.txt', 'r') as v:
     version = v.read().strip()
 
-with open('REQUIREMENTS.txt', 'r') as r:
+with open('requirements.txt', 'r') as r:
     requires = r.read().split()
 
 with open('README.rst', 'r') as r:
