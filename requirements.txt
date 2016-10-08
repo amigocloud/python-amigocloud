@@ -1,0 +1,2 @@
+requests>=2.6.0
+socketIO-client>=0.5,<0.6

@@ -1,7 +1,10 @@
 import hashlib
 import json
 import os
-import urlparse
+try:
+    from urlparse import urlparse, urlunparse, parse_qs
+except ImportError:  # python 3
+    from urllib.parse import urlparse, urlunparse, parse_qs
 
 import requests
 from socketIO_client import SocketIO, BaseNamespace
@@ -117,13 +120,13 @@ class AmigoCloud(object):
 
         # Add token (if it's not already there)
         if self._token:
-            parsed = list(urlparse.urlparse(full_url))
+            parsed = list(urlparse(full_url))
             if not parsed[4]:  # query
                 parsed[4] = 'token=%s' % self._token
-                full_url = urlparse.urlunparse(parsed)
-            elif 'token' not in urlparse.parse_qs(parsed[4]):
+                full_url = urlunparse(parsed)
+            elif 'token' not in parse_qs(parsed[4]):
                 parsed[4] += '&token=%s' % self._token
-                full_url = urlparse.urlunparse(parsed)
+                full_url = urlunparse(parsed)
         headers = headers or {}
 
         # If files are being sent, we cannot encode data as JSON
