@@ -87,8 +87,8 @@ class AmigoCloud(object):
             return url
         # User wants to use the api_url
         if url.startswith('/'):
-            return (self._project_url or self.api_url) + url
-        return '%s/%s' % (self._project_url or self.api_url, url)
+            return self.api_url + url
+        return os.path.join(self._project_url or self.api_url, url)
 
     def check_for_errors(self, response):
         try:

@@ -58,13 +58,13 @@ can use full urls or relative API urls:
     amigocloud.get('/me')
     amigocloud.get('https://www.amigocloud.com/api/v1/me')
 
-For convenience, when using project tokens, urls are relative to the project's url:
+For convenience, when using project tokens, urls are relative to the project's url (unless it starts with `/`):
 
 .. code:: python
 
     # All three will do the same request:
     amigocloud.get('datasets')
-    amigocloud.get('/datasets')
+    amigocloud.get('/users/123/projects/1234/datasets')
     amigocloud.get('https://www.amigocloud.com/api/v1/users/123/projects/1234/datasets')
 
 Creating a new AmigoCloud project from Python is as simple as:
