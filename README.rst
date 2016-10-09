@@ -34,7 +34,8 @@ This library uses API token to authenticate you. To generate or access your API 
     from amigocloud import AmigoCloud
     amigocloud = AmigoCloud(token='R:dlNDEiOWciP3y26kG2cHklYpr2HIPK40HD32r1')
 
-You could also use a project token.
+You could also use a project token. Remember that project tokens can only be used to query endpoints relative to the project it belongs to.
+If the project URL doesn't match its project, `AmigoCloudError` will be thrown.
 
 .. code:: python
 

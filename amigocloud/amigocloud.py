@@ -52,7 +52,8 @@ class AmigoCloud(object):
         :param str token: AmigoCloud API Token
         :param str project_url: Specify it if you are using a project token
         :param str base_url: points to https://www.amigocloud.com by default
-        :param bool use_websockets: True by default
+        :param bool use_websockets: True by default. Parameter will be ignored
+            when using Project Tokens
         :param int websocket_port: Standard websocket port by default
         """
         # Urls
