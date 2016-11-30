@@ -82,14 +82,14 @@ class AmigoCloud(object):
             self.amigosocket = None
 
     def build_url(self, url):
-
         if url.startswith('http'):
             # User already specified the full url
             return url
         # User wants to use the api_url
         if url.startswith('/'):
             return self.api_url + url
-        return os.path.join(self._project_url or self.api_url, url)
+        return '/'.join(
+            s.strip('/') for s in (self._project_url or self.api_url, url))
 
     def check_for_errors(self, response):
         try:
