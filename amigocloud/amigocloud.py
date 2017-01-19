@@ -1,12 +1,10 @@
 import hashlib
 import json
 import os
-try:
-    from urlparse import urlparse, urlunparse, parse_qs
-except ImportError:  # python 3
-    from urllib.parse import urlparse, urlunparse, parse_qs
 
 import requests
+from six import string_types
+from six.moves.urllib.parse import urlparse, urlunparse, parse_qs
 from socketIO_client import SocketIO, BaseNamespace
 
 # Disable useless warnings
@@ -233,7 +231,7 @@ class AmigoCloud(object):
         the `chunked_upload_url` will always be used.
         """
 
-        if isinstance(file_obj, basestring):
+        if isinstance(file_obj, string_types):
             # file_obj is a filepath: open file and close it at the end
             file_obj = open(file_obj, 'rb')
             close_file = True
@@ -245,15 +243,13 @@ class AmigoCloud(object):
         file_obj.seek(0, os.SEEK_END)
         file_size = file_obj.tell()
         file_obj.seek(0)
-        # Get filename
-        filename = os.path.basename(file_obj.name)
 
         try:
             # Simple upload?
             if (simple_upload_url and not force_chunked
                     and file_size < MAX_SIZE_SIMPLE_UPLOAD):
                 return self.post(simple_upload_url, data=extra_data,
-                                 files={'datafile': (filename, file_obj)})
+                                 files={'datafile': file_obj})
             # Chunked upload
             data = {}
             md5_hash = hashlib.md5()
@@ -265,7 +261,7 @@ class AmigoCloud(object):
                 content_range = 'bytes %d-%d/%d' % (start_byte, end_byte,
                                                     file_size)
                 ret = self.post(chunked_upload_url, data=data,
-                                files={'datafile': (filename, chunk)},
+                                files={'datafile': chunk},
                                 headers={'Content-Range': content_range})
                 data.setdefault('upload_id', ret['upload_id'])
                 start_byte = end_byte + 1
