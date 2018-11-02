@@ -1,6 +1,8 @@
 import hashlib
 import json
 import os
+import urllib2
+from datetime import datetime
 
 import requests
 from six import string_types
@@ -366,3 +368,125 @@ class AmigoCloud(object):
         """
 
         self.socketio.wait(seconds=seconds)
+
+    def geocode_addresses(self, owner_id, project_id, dataset_id,
+                          address_field, geo_field, **params):
+        """
+        Geocode addresses in a dataset. The dataset must have a string field
+        with the addresses to geocode and a geometry field for the Geocoding
+        results.
+        :param owner_id: Id of the user who created the project
+        :param project_id:
+        :param dataset_id:
+        :param address_field: Name of the address field in the dataset
+        :param geo_field: Name of the geometry field in the dataset
+        :param params: Dictionary to restrict the Geocoding response.
+                       For example: {'country':'PE'}
+                       More information:
+                       https://developers.google.com/maps/documentation/geocoding/intro#ComponentFiltering
+        """
+
+        project_url = ("/users/{owner_id}/projects/{project_id}"
+                       ).format(owner_id=owner_id,
+                                project_id=project_id)
+
+        dataset_url = ("{project_url}/datasets/{dataset_id}"
+                       ).format(project_url=project_url,
+                                dataset_id=dataset_id)
+        dataset = self.get(dataset_url)
+        total = dataset['feature_count']
+
+        print('%d rows to process' % total)
+        print('Estimated time: %.2f hours' % (total * 2.0 / 3600))
+        start = datetime.now()
+        print('Started at %s hrs' % start.strftime('%H:%M'))
+
+        query_url = ("{project_url}/sql?query={query}&offset={offset}"
+                     "&limit={limit}")
+        query = ("SELECT {address_column}, amigo_id "
+                 "FROM dataset_{dataset_id}"
+                 ).format(address_column=address_field,
+                          dataset_id=dataset_id)
+        rows = []
+
+        print('Exporting addresses...')
+
+        for i in range(0, total, 1000):
+            response = self.get(query_url.format(
+                project_url=project_url,
+                query=query,
+                offset=str(i),
+                limit=1000
+            ))
+            data = response['data']
+            for row in data:
+                rows.append(row)
+
+        print('Done!')
+        print('Start processing...')
+
+        geocoder_url = ("/me/geocoder/search?focus.point.lat=0"
+                        "&focus.point.lon=0&text={address}{components}")
+        query_url = "{project_url}/sql"
+
+        components = ''
+        if params:
+            components = '&components='
+            for key, value in params.items():
+                components += ("{key}:{value}"
+                               ).format(key=key, value=value)
+
+        processed = 0
+        points = 0
+        values = ''
+        for row in rows:
+            address = row[address_field]
+            amigo_id = row['amigo_id']
+            response = self.get(geocoder_url.format(
+                address=urllib2.quote(address.encode('UTF-8')),
+                components=components
+            ), stream=True)
+
+            if response.status_code == 200:
+                coordinates = json.loads(
+                    response.text)['features'][0]['geometry']['coordinates']
+                lng = str(coordinates[0])
+                lat = str(coordinates[1])
+
+                values += ("('{amigo_id}', "
+                           "ST_SetSRID(ST_MakePoint({lng}, {lat}), 4326)),"
+                           ).format(amigo_id=amigo_id,
+                                    lng=lng,
+                                    lat=lat)
+                points += 1
+
+            processed += 1
+            if (points % 100 == 0 or processed == total) and values != '':
+                data = {
+                    'query': ("UPDATE dataset_{dataset_id} as d "
+                              "SET {geo_column} = c.{geo_column} "
+                              "FROM (values {values}) "
+                              "as c(amigo_id, {geo_column}) "
+                              "WHERE c.amigo_id = d.amigo_id"
+                              ).format(dataset_id=dataset_id,
+                                       geo_column=geo_field,
+                                       values=values[:-1])
+                }
+
+                self.post(query_url.format(
+                    project_url=project_url,
+                ), data=data)
+                values = ''
+
+            if processed % 100 == 0:
+                print('%d%%' % (float(processed) / total * 100))
+        print('%d%%' % (float(processed) / total * 100))
+
+        print('Done!')
+        print('Finished at %s hrs' % datetime.now().strftime('%H:%M'))
+        print('Success rate: %d%% (%d of %d points created)' %
+              (float(points) / total * 100, total, points))
+        total_time = datetime.now() - start
+        print('Total time: %s' % total_time)
+        average_time = total_time.total_seconds() / points
+        print('Average time per request: %.3f seconds' % average_time)
