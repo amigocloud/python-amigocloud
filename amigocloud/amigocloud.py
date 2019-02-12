@@ -431,11 +431,11 @@ class AmigoCloud(object):
         geocoder_params = {'focus.point.lat': 0, 'focus.point.lon': 0}
 
         components = ''
+
         for key, value in extra_params.items():
-            components += ("{key}:{value}|"
-                           ).format(key=key, value=value)
-        if components:
-            geocoder_params['components'] = components[:-1]
+            components += ("{key}:{value}|").format(key=key, value=value)
+
+        components = components[:-1]
 
         def geocode_address(row_data):
             address = row_data[address_field]
