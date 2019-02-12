@@ -375,11 +375,11 @@ class AmigoCloud(object):
         Geocode addresses in a dataset. The dataset must have a string field
         with the addresses to geocode and a geometry field for the Geocoding
         results.
-        :param owner_id: Id of the user who created the project
-        :param project_id:
-        :param dataset_id:
-        :param address_field: Name of the address field in the dataset
-        :param geo_field: Name of the geometry field in the dataset
+        :param owner_id: Id of the user who created the project.
+        :param project_id: Must be a string.
+        :param dataset_id: Must be a string.
+        :param address_field: Name of the address field in the dataset.
+        :param geo_field: Name of the geometry field in the dataset.
         :param params: Dictionary to restrict the Geocoding response.
                        For example: {'country':'PE'}
                        More information:
@@ -419,8 +419,7 @@ class AmigoCloud(object):
                 limit=1000
             ))
             data = response['data']
-            for row in data:
-                rows.append(row)
+            rows.extend(data)
 
         print('Done!')
         print('Start processing...')
