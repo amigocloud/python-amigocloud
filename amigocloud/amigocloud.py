@@ -380,7 +380,7 @@ class AmigoCloud(object):
         :param dataset_id: Must be a string.
         :param address_field: Name of the address field in the dataset.
         :param geometry_field: Name of the geometry field in the dataset.
-        :param extra_params: Dictionary to restrict the Geocoding response.
+        :param extra_params: Dictionary to filter the Geocoding response.
                        For example: {'country':'PE'}
                        More information:
                        https://developers.google.com/maps/documentation/geocoding/intro#ComponentFiltering
@@ -455,14 +455,14 @@ class AmigoCloud(object):
             return ''
 
         processed = 0
-        interval = 30
-        for i in range(0, len(rows), interval):
-            rows_to_geocode = rows[i: i + interval]
+        steps = 30
+        for i in range(0, len(rows), steps):
+            rows_to_geocode = rows[i: i + steps]
             threads = []
 
-            for j in range(len(rows_to_geocode)):
+            for row in rows_to_geocode:
                 threads.append(gevent.spawn(geocode_address,
-                                            rows_to_geocode[j]))
+                                            row))
             gevent.joinall(threads)
             values = ''.join([thread.value for thread in threads])
 
