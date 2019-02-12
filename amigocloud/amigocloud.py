@@ -369,13 +369,12 @@ class AmigoCloud(object):
 
         self.socketio.wait(seconds=seconds)
 
-    def geocode_addresses(self, owner_id, project_id, dataset_id,
+    def geocode_addresses(self, project_id, dataset_id,
                           address_field, geo_field, **params):
         """
         Geocode addresses in a dataset. The dataset must have a string field
         with the addresses to geocode and a geometry field for the Geocoding
         results.
-        :param owner_id: Id of the user who created the project.
         :param project_id: Must be a string.
         :param dataset_id: Must be a string.
         :param address_field: Name of the address field in the dataset.
@@ -386,9 +385,8 @@ class AmigoCloud(object):
                        https://developers.google.com/maps/documentation/geocoding/intro#ComponentFiltering
         """
 
-        project_url = ("/users/{owner_id}/projects/{project_id}"
-                       ).format(owner_id=owner_id,
-                                project_id=project_id)
+        project_url = ("/projects/{project_id}"
+                       ).format(project_id=project_id)
 
         dataset_url = ("{project_url}/datasets/{dataset_id}"
                        ).format(project_url=project_url,
