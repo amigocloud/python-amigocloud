@@ -17,7 +17,7 @@ try:
 except AttributeError:
     pass
 
-BASE_URL = 'https://www.amigocloud.com'
+BASE_URL = 'https:/app.amigocloud.com'
 CHUNK_SIZE = 100000  # 100kB
 MAX_SIZE_SIMPLE_UPLOAD = 8000000  # 8MB
 
