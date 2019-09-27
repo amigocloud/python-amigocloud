@@ -1,7 +1,7 @@
 import hashlib
 import json
 import os
-import urllib2
+import urllib
 from datetime import datetime
 
 import gevent
