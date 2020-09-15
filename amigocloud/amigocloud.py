@@ -75,9 +75,10 @@ class AmigoCloud(object):
 
         # Websockets
         if use_websockets and not project_url:
-            self.socketio = SocketIO(self.base_url, websocket_port)
+            socket_url = self.base_url + '/v2_socket.io'
+            self.socketio = SocketIO(socket_url, websocket_port)
             self.amigosocket = self.socketio.define(BaseNamespace,
-                                                    '/v2_socket.io')
+                                                    '/amigosocket')
         else:
             self.socketio = None
             self.amigosocket = None
