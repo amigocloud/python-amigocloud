@@ -2,13 +2,14 @@ import hashlib
 import json
 import os
 import urllib
+import time
+import socketio
 from datetime import datetime
 
 import gevent
 import requests
 from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, parse_qs
-from socketIO_client import SocketIO, BaseNamespace
 
 # Disable useless warnings
 # Works with requests==2.6.0, fails with some other versions
@@ -18,6 +19,8 @@ except AttributeError:
     pass
 
 BASE_URL = 'https://app.amigocloud.com'
+NAMESPACE = '/amigosocket'
+SOCKET_PATH = 'v2_socket.io'
 CHUNK_SIZE = 100000  # 100kB
 MAX_SIZE_SIMPLE_UPLOAD = 8000000  # 8MB
 
@@ -48,11 +51,14 @@ class AmigoCloud(object):
     }
 
     def __init__(self, token=None, project_url=None, base_url=BASE_URL,
+                 socketio_path=SOCKET_PATH, socket_namespaces=[NAMESPACE],
                  use_websockets=True, websocket_port=None):
         """
         :param str token: AmigoCloud API Token
         :param str project_url: Specify it if you are using a project token
         :param str base_url: points to https://www.amigocloud.com by default
+        :param str socketio_path: points to v2_socket.io
+        :param str socket_namespaces: default namespace `/amigosocket`
         :param bool use_websockets: True by default. Parameter will be ignored
             when using Project Tokens
         :param int websocket_port: Standard websocket port by default
@@ -75,10 +81,9 @@ class AmigoCloud(object):
 
         # Websockets
         if use_websockets and not project_url:
-            socket_url = self.base_url + '/v2_socket.io'
-            self.socketio = SocketIO(socket_url, websocket_port)
-            self.amigosocket = self.socketio.define(BaseNamespace,
-                                                    '/amigosocket')
+            self.amigosocket = socketio.Client()
+            self.amigosocket.connect(base_url, namespaces=socket_namespaces,
+                                     socketio_path=socketio_path)
         else:
             self.socketio = None
             self.amigosocket = None
@@ -326,7 +331,7 @@ class AmigoCloud(object):
                                 file_obj, chunk_size=chunk_size,
                                 force_chunked=force_chunked, extra_data=data)
 
-    def listen_user_events(self):
+    def listen_user_events(self, namespace=NAMESPACE):
         """
         Authenticate to start listening to user events.
         """
@@ -338,7 +343,7 @@ class AmigoCloud(object):
         websocket_session = response['websocket_session']
         auth_data = {'userid': self._user_id,
                      'websocket_session': websocket_session}
-        self.amigosocket.emit('authenticate', auth_data)
+        self.amigosocket.emit('authenticate', auth_data, namespace=namespace)
 
     def listen_dataset_events(self, owner_id, project_id, dataset_id):
         """
@@ -356,12 +361,11 @@ class AmigoCloud(object):
                      'websocket_session': websocket_session}
         self.amigosocket.emit('authenticate', auth_data)
 
-    def add_callback(self, event_name, callback):
+    def add_callback(self, event_name, callback, namespace=NAMESPACE):
         """
         Add callback to websocket connection.
         """
-
-        self.amigosocket.on(event_name, callback)
+        self.amigosocket.on(event_name, callback, namespace=namespace)
 
     def start_listening(self, seconds=None):
         """
@@ -369,7 +373,9 @@ class AmigoCloud(object):
         If seconds=None it means it will listen forever.
         """
 
-        self.socketio.wait(seconds=seconds)
+        if seconds:
+            time.sleep(seconds)
+            self.amigosocket.disconnect()
 
     def geocode_addresses(self, project_id, dataset_id, address_field,
                           geometry_field, **extra_params):
