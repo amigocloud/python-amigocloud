@@ -23,10 +23,31 @@ setup(
     version=version,
     description='Python client for the AmigoCloud REST API',
     long_description=readme,
-    author='Julio M Alegria',
-    author_email='julio@amigocloud.com',
+    author='AmigoCloud',
+    author_email='support@amigocloud.com',
     url='https://github.com/amigocloud/python-amigocloud',
     download_url=download_url % version,
     install_requires=requires,
-    license='MIT'
+    license='MIT',
+    keywords=(
+        'gis geo geographic spatial spatial-data spatial-data-analysis '
+        'spatial-analysis data-science maps mapping web-mapping python '
+        'native-development geodata'),
+    classifiers=[
+        'License :: OSI Approved :: MIT License',
+        'Development Status :: 5 - Production/Stable',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Topic :: Internet :: WWW/HTTP :: Site Management',
+        'Topic :: Scientific/Engineering :: GIS',
+        'Topic :: Scientific/Engineering :: Information Analysis',
+        'Topic :: Scientific/Engineering :: Visualization',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Education',
+        'Intended Audience :: Manufacturing',
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: Telecommunications Industry',
+        'Operating System :: OS Independent'
+    ]
 )

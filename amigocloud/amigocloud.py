@@ -10,6 +10,8 @@ from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, parse_qs
 from socketIO_client import SocketIO, BaseNamespace
 
+import pdb
+
 # Disable useless warnings
 # Works with requests==2.6.0, fails with some other versions
 try:
@@ -33,6 +35,91 @@ class AmigoCloudError(Exception):
         if self.text:
             return self.message + '\n' + self.text
         return self.message
+
+
+class AmigoCloudIterator(object):
+    iter_num = 0
+    new_list_lenght = 0
+
+    def __init__(self, first_url, params=None, **request_kwargs):
+        self.params = params
+        self.request_kwargs = request_kwargs
+        self.is_iterable = True
+        self.limit = None
+        self.next_url = None
+        self.process_values(first_url, first_request=True)
+
+    def request_url(self, url, first_request=False):
+        """
+        Request URL and check if it is an iterable object or is a simple object.
+        """
+        response = requests.get(url, params=self.params, **self.request_kwargs)
+        json_response = json.loads(response.text)
+
+        if first_request and 'next' not in json_response:
+            self.is_iterable = False
+
+        return json_response
+
+    def get(self, value):
+        """
+        Return any response value that is not part of the iterable object. If it
+        does not exists in the response, a ValueError is raised.
+        """
+        if value not in self.response:
+            raise ValueError('Response object has not value {}.'.format(value))
+        return self.response.get(value)
+
+    def process_values(self, url, first_request=False):
+        """
+        Process AmigoCloud request to check if the object is iterable or not. If
+        is not, it returns an list containing the response object inside of it.
+        """
+        response = self.request_url(url, first_request=first_request)
+
+        # A response is considered as non iterable if it not contains the
+        # attribute `next`.
+        if not self.is_iterable:
+            self.data = [response]
+            self.iter_num = 0
+            self.new_list_lenght = 1
+            return
+
+        data = None
+        # If results is included in the response it means it is a DRF response.
+        # If it includes data in the response it is a sql query response.
+        # Otherwise returns an empty list.
+        if 'results' in response:
+            data = response.pop('results')
+        elif 'data' in response:
+            data = response.pop('data')
+
+        self.next_url = response['next']
+        self.response = response
+        self.data = data or []
+
+        # Always set the new lengths and reset the iter item number value to zero.
+        self.new_list_lenght = len(self.data)
+        self.iter_num = 0
+
+    def __next__(self):
+        if self.iter_num < self.new_list_lenght:
+            current_item = self.data[self.iter_num]
+            self.iter_num += 1
+
+            if self.next_url and self.iter_num == self.new_list_lenght:
+                self.process_values(self.next_url)
+        else:
+            raise StopIteration
+
+        return current_item
+
+    def next(self):
+        return self.__next__()
+
+
+    def __iter__(self):
+        return self
 
 
 class AmigoCloud(object):
@@ -114,6 +201,19 @@ class AmigoCloud(object):
         self._user_id = None
         self._project_id = None
         self._project_url = None
+
+    def get_cursor(self, url, params=None, **request_kwargs):
+        """
+        GET request to AmigoCloud endpoint as an iterable cursor.
+        """
+
+        full_url = self.build_url(url)
+        params = params or {}
+
+        if self._token:
+            params.setdefault('token', self._token)
+
+        return AmigoCloudIterator(full_url, params=params, **request_kwargs)
 
     def get(self, url, params=None, raw=False, stream=False, **request_kwargs):
         """
