@@ -113,11 +113,13 @@ You can get a cursor to iterate over queries with many results.
     for dataset in datasets:
         print('Dataset:', dataset['name'])
 
+You can request some extra values, that are included in the response.
 
 .. code:: python
 
     dataset_rows = amigocloud.get_cursor(
-        'https://www.amigocloud.com/api/v1/projects/1234/sql', {'query': 'select * from dataset_1'})
+        'https://www.amigocloud.com/api/v1/projects/1234/sql',
+        {'query': 'select * from dataset_1'})
 
     print('Response extra values:', dataset_rows.get('columns'))
 
