@@ -98,6 +98,22 @@ You can get the raw response if you want by using the ``raw`` parameter:
         image_data = amigocloud.get(images['thumbnail'], raw=True)
         thumbnail.write(image_data)
 
+You can get a cursor to iterate over queries with many results.
+
+.. code:: python
+
+    datasets = amigocloud.get_cursor('datasets')
+
+    dataset1 = datasets.next()
+    print('Dataset1:', dataset1['name'])
+
+    dataset2 = datasets.next()
+    print('Dataset2:', dataset2['name'])
+
+    for dataset in datasets:
+        print('Dataset:', dataset['name'])
+
+
 Websocket connection
 ~~~~~~~~~~~~~~~~~~~~
 

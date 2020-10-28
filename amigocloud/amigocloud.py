@@ -45,7 +45,6 @@ class AmigoCloudIterator(object):
         self.params = params
         self.request_kwargs = request_kwargs
         self.is_iterable = True
-        self.limit = None
         self.next_url = None
         self.process_values(first_url, first_request=True)
 
