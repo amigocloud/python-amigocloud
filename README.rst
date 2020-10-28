@@ -98,35 +98,6 @@ You can get the raw response if you want by using the ``raw`` parameter:
         image_data = amigocloud.get(images['thumbnail'], raw=True)
         thumbnail.write(image_data)
 
-You can get a cursor to iterate over queries with many results.
-
-.. code:: python
-
-    datasets = amigocloud.get_cursor('datasets')
-
-    dataset1 = datasets.next()
-    print('Dataset1:', dataset1['name'])
-
-    dataset2 = datasets.next()
-    print('Dataset2:', dataset2['name'])
-
-    for dataset in datasets:
-        print('Dataset:', dataset['name'])
-
-You can request some extra values, that are included in the response.
-
-.. code:: python
-
-    dataset_rows = amigocloud.get_cursor(
-        'https://www.amigocloud.com/api/v1/projects/1234/sql',
-        {'query': 'select * from dataset_1'})
-
-    print('Response extra values:', dataset_rows.get('columns'))
-
-    for row in dataset_rows:
-        print('Row:', row)
-
-
 Websocket connection
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -178,6 +149,78 @@ Finally, start running the websocket client:
 This method receives an optional parameter ``seconds``. If ``seconds``
 is ``None`` (default value), the client will listen forever. You might
 want to run this method in a new thread.
+
+Cursors
+~~~~~~~~~~
+
+Many requests can be paginated, this means that the request comes in chunks.
+The default limit is ``20`` for normal requests like Datasets, Projects, etc.
+And ``100`` for SQL requests. But the limit of the pagination can be passed as a
+parameter as well.
+
+Here the request will only return the first 100 datasets:
+
+.. code:: python
+
+    datasets = amigocloud.get('datasets', {'limit': 100})
+
+And if we want to get the next 100 datasets, it can be done in the next way:
+
+.. code:: python
+
+    datasets = amigocloud.get('datasets', {'limit': 100, 'offset': 100})
+
+The problem here is this requires a lot of boilerplate code just to manage the pagination loop.
+Increasing the value of ``limit`` can solve the problem. But if there are a very large
+data set, computing all data at once result in much memory consumption.
+
+The Cursor iterate over the results and if it reaches the limit of the response it will
+automatically make a request to get the next values. So you can get all data
+and iterate over it, without worrying about the pagination limits.
+
+.. code:: python
+
+    datasets = amigocloud.get_cursor('datasets')
+    for dataset in datasets:
+        print('Dataset:', dataset['name'])
+
+If you want to iterate one request at a time it can be requested as:
+
+.. code:: python
+
+    datasets = amigocloud.get_cursor('datasets')
+
+    dataset1 = datasets.next()
+    print('Dataset1:', dataset1['name'])
+
+    # Boolean to ask if there is a next value.
+    # otherwise a StopIteration exception is raised.
+    if datasets.has_next:
+        dataset2 = datasets.next()
+        print('Dataset2:', dataset2['name'])
+
+Also, you can request some extra values, that are included in the response.
+
+.. code:: python
+
+    dataset_rows = amigocloud.get_cursor(
+        'https://www.amigocloud.com/api/v1/projects/1234/sql',
+        {'query': 'select * from dataset_1'})
+
+    print('Response extra values:', dataset_rows.get('columns'))
+
+    for row in dataset_rows:
+        print('Row:', row)
+
+Cursors can be used for Projects, Datasets, BaseLayers, SQL queries, etc.
+It also supports non-iterable responses. For this cases it returns only one result.
+
+.. code:: python
+
+    cursor = amigocloud.get_cursor('me')
+
+    for me in cursor:
+        print('Me:', me)
 
 Exceptions
 ~~~~~~~~~~

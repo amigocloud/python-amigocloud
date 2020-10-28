@@ -101,6 +101,10 @@ class AmigoCloudIterator(object):
         self.new_list_lenght = len(self.data)
         self.iter_num = 0
 
+    @property
+    def has_next(self):
+        return self.iter_num < self.new_list_lenght
+
     def __next__(self):
         if self.iter_num < self.new_list_lenght:
             current_item = self.data[self.iter_num]
