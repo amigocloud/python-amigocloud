@@ -114,6 +114,17 @@ You can get a cursor to iterate over queries with many results.
         print('Dataset:', dataset['name'])
 
 
+.. code:: python
+
+    dataset_rows = amigocloud.get_cursor(
+        'https://www.amigocloud.com/api/v1/projects/1234/sql', {'query': 'select * from dataset_1'})
+
+    print('Response extra values:', dataset_rows.get('columns'))
+
+    for row in dataset_rows:
+        print('Row:', row)
+
+
 Websocket connection
 ~~~~~~~~~~~~~~~~~~~~
 
