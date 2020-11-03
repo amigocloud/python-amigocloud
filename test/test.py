@@ -8,6 +8,9 @@ amigocloudtoken = os.getenv("AMIGOCLOUDTOKEN")
 amigocloud = AmigoCloud(token=amigocloudtoken)
 
 class TestIterator:
+    """
+    To run tests PyTest is needed.
+    """
 
     def test_check_cursor_endpoint(self):
 
@@ -35,9 +38,8 @@ class TestIterator:
         projects_list = amigocloud.get_cursor('/me/projects')
 
         project = projects_list.next()
-        assert type(project) == dict
+        assert isinstance(project, dict) == True
         assert 'name' in project
-        assert type(project['name']) == str
 
         while projects_list.has_next:
             projects_list.next()
@@ -78,7 +80,7 @@ class TestIterator:
         simple_json_object = amigocloud.get_cursor('/me')
         data = simple_json_object.next()
 
-        assert type(data) == dict
+        assert isinstance(data, dict) == True
         assert ('first_name' in data) == True
         assert simple_json_object.has_next == False
 

@@ -23,6 +23,7 @@ setup(
     version=version,
     description='Python client for the AmigoCloud REST API',
     long_description=readme,
+    long_description_content_type='text/x-rst',
     author='AmigoCloud',
     author_email='support@amigocloud.com',
     url='https://github.com/amigocloud/python-amigocloud',

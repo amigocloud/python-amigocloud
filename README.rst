@@ -102,7 +102,7 @@ You can get the raw response if you want by using the ``raw`` parameter:
 
 
 Cursor Requests
-~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 Many requests return a paginated list. For example: projects, datasets, base layers, 
 and sql queries. They can be identified when the request returns a dictionary with 
@@ -250,5 +250,9 @@ the request:
 
 .. |requests| replace:: ``requests``
 .. _requests: http://docs.python-requests.org/en/latest
+.. |gevent| replace:: ``gevent``
+.. _gevent: https://github.com/gevent/gevent
 .. |socketIO_client| replace:: ``socketIO_client``
 .. _socketIO_client: https://github.com/invisibleroads/socketIO-client
+.. |six| replace:: ``six``
+.. _six: https://github.com/benjaminp/six
