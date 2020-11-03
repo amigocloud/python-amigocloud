@@ -10,8 +10,6 @@ from six import string_types
 from six.moves.urllib.parse import urlparse, urlunparse, parse_qs
 from socketIO_client import SocketIO, BaseNamespace
 
-import pdb
-
 # Disable useless warnings
 # Works with requests==2.6.0, fails with some other versions
 try:
