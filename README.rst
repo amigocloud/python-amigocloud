@@ -249,7 +249,7 @@ the request:
         print 'Message from server was', err.text
 
 .. |requests| replace:: ``requests``
-.. _requests: http://docs.python-requests.org/en/latest
+.. _requests: https://requests.readthedocs.io/en/master/
 .. |gevent| replace:: ``gevent``
 .. _gevent: https://github.com/gevent/gevent
 .. |socketIO_client| replace:: ``socketIO_client``
