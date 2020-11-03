@@ -9,7 +9,9 @@ amigocloud = AmigoCloud(token=amigocloudtoken)
 
 class TestIterator:
     """
-    To run tests PyTest is needed.
+    To run tests PyTest is needed, using the following command with the file to test.:
+
+    `pytest test/test.py`
     """
 
     def test_check_cursor_endpoint(self):
