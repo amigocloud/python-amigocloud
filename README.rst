@@ -17,7 +17,9 @@ Dependencies
 ------------
 
 -  |requests|_: Handles the HTTP requests to the AmigoCloud REST API.
+-  |gevent|_: Handles the websocket connections.
 -  |socketIO_client|_: Handles the AmigoCloud websocket connection.
+-  |six|_: A library to assit with python2 to python3 compatibility. 
 
 This dependencies will be automatically installed.
 
@@ -98,6 +100,87 @@ You can get the raw response if you want by using the ``raw`` parameter:
         image_data = amigocloud.get(images['thumbnail'], raw=True)
         thumbnail.write(image_data)
 
+
+Cursor Requests
+~~~~~~~~~~~~~~~
+
+Many requests return a paginated list. For example: projects, datasets, base layers, 
+and sql queries. They can be identified when the request returns a dictionary with 
+four items. 
+
+.. code:: python
+
+    from amigocloud import AmigoCloud
+    amigocloud = AmigoCloud(token='yourapitoken')
+
+    project_list = amigocloud.get('/me/projects')
+    pprint ( project_list )
+
+will return a dictionary like this (modified for brevity):  
+
+.. code:: javascript
+
+    {
+        u'count': 319,
+        u'next': u'https://app.amigocloud.com/api/v1/me/projects?limit=20&offset=20&token=yourapitoken',
+        u'previous': None,
+        u'results': [] 
+    } 
+
+From the results, you can see that this endpoint can be iterated through. 
+To make it easier to iterate through these lists, you can use the ``get_cursor`` 
+function. The cursor iterates over the results and if it reaches the limit of 
+the response it will automatically make a request to get the next values. So 
+you can get all data and iterate over it, without worrying about the 
+pagination.
+
+.. code:: python
+
+    projects = amigocloud.get_cursor('/me/projects')
+    for project in projects:
+        print('Project:', project['name'])
+
+If you want to iterate one request at a time it can be requested as:
+
+.. code:: python
+
+    # using a project token to authenticate
+
+    datasets = amigocloud.get_cursor('datasets')
+
+    dataset1 = datasets.next()
+    print('Dataset1:', dataset1['name'])
+
+    # Boolean to ask if there is a next value.
+    # otherwise a StopIteration exception is raised.
+    if datasets.has_next:
+        dataset2 = datasets.next()
+        print('Dataset2:', dataset2['name'])
+
+Also, you can request some extra values, that are included in the response.
+
+.. code:: python
+
+    dataset_rows = amigocloud.get_cursor(
+        'https://www.amigocloud.com/api/v1/projects/1234/sql',
+        {'query': 'select * from dataset_1'})
+
+    print('Response extra values:', dataset_rows.get('columns'))
+
+    for row in dataset_rows:
+        print('Row:', row)
+
+Cursors can be used for Projects, Datasets, BaseLayers, SQL queries, etc.
+It also supports non-iterable responses. For this cases it returns only one result.
+
+.. code:: python
+
+    cursor = amigocloud.get_cursor('me')
+
+    for me in cursor:
+        print('Me:', me)
+
+
 Websocket connection
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -166,6 +249,10 @@ the request:
         print 'Message from server was', err.text
 
 .. |requests| replace:: ``requests``
-.. _requests: http://docs.python-requests.org/en/latest
+.. _requests: https://requests.readthedocs.io/en/master/
+.. |gevent| replace:: ``gevent``
+.. _gevent: https://github.com/gevent/gevent
 .. |socketIO_client| replace:: ``socketIO_client``
 .. _socketIO_client: https://github.com/invisibleroads/socketIO-client
+.. |six| replace:: ``six``
+.. _six: https://github.com/benjaminp/six

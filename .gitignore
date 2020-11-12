@@ -11,3 +11,4 @@ develop-eggs
 pip-log.txt
 .DS_Store
 .idea/
+venv/
