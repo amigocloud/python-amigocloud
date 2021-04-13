@@ -127,7 +127,7 @@ class AmigoCloud(object):
     """
     Client for the AmigoCloud REST API.
     Uses API tokens for authentication. To generate yours, go to:
-        https://www.amigocloud.com/accounts/tokens
+        https://app.amigocloud.com/accounts/tokens
     """
 
     error_msg = {
@@ -140,7 +140,7 @@ class AmigoCloud(object):
         """
         :param str token: AmigoCloud API Token
         :param str project_url: Specify it if you are using a project token
-        :param str base_url: points to https://www.amigocloud.com by default
+        :param str base_url: points to https://app.amigocloud.com by default
         :param bool use_websockets: True by default. Parameter will be ignored
             when using Project Tokens
         :param int websocket_port: Standard websocket port by default

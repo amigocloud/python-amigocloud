@@ -1,7 +1,7 @@
 python-amigocloud
 =================
 
-Python client for the `AmigoCloud <https://www.amigocloud.com>`__ REST
+Python client for the `AmigoCloud <https://app.amigocloud.com>`__ REST
 API.
 
 Installation
@@ -29,7 +29,7 @@ Usage
 Authentication
 ~~~~~~~~~~~~~~
 
-This library uses API token to authenticate you. To generate or access your API tokens, go to `API tokens <https://www.amigocloud.com/accounts/tokens>`__.
+This library uses API token to authenticate you. To generate or access your API tokens, go to `API tokens <https://app.amigocloud.com/accounts/tokens>`__.
 
 .. code:: python
 
@@ -59,7 +59,7 @@ can use full urls or relative API urls:
     # All three will do the same request:
     amigocloud.get('me')
     amigocloud.get('/me')
-    amigocloud.get('https://www.amigocloud.com/api/v1/me')
+    amigocloud.get('https://app.amigocloud.com/api/v1/me')
 
 For convenience, when using project tokens, urls are relative to the project's url (unless it starts with `/`):
 
@@ -68,7 +68,7 @@ For convenience, when using project tokens, urls are relative to the project's u
     # All three will do the same request:
     amigocloud.get('datasets')
     amigocloud.get('/users/123/projects/1234/datasets')
-    amigocloud.get('https://www.amigocloud.com/api/v1/users/123/projects/1234/datasets')
+    amigocloud.get('https://app.amigocloud.com/api/v1/users/123/projects/1234/datasets')
 
 Creating a new AmigoCloud project from Python is as simple as:
 
